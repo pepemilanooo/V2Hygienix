@@ -1,0 +1,37 @@
+CREATE TABLE IF NOT EXISTS locations (
+  id UUID PRIMARY KEY,
+  client_id UUID NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+  nome_sede VARCHAR(255) NOT NULL,
+  indirizzo TEXT,
+  citta VARCHAR(100),
+  cap VARCHAR(10),
+  provincia VARCHAR(2),
+  latitudine DECIMAL(10,8),
+  longitudine DECIMAL(11,8),
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS location_cards (
+  id UUID PRIMARY KEY,
+  location_id UUID UNIQUE NOT NULL REFERENCES locations(id) ON DELETE CASCADE,
+  descrizione TEXT,
+  zone_rischio TEXT,
+  istruzioni_operatore TEXT,
+  dpi_richiesti TEXT,
+  note TEXT,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS trap_points (
+  id UUID PRIMARY KEY,
+  location_id UUID NOT NULL REFERENCES locations(id) ON DELETE CASCADE,
+  codice VARCHAR(50) NOT NULL,
+  tipo VARCHAR(50) NOT NULL,
+  posizione_descrizione TEXT,
+  attiva BOOLEAN NOT NULL DEFAULT true,
+  ultima_ispezione TIMESTAMP,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

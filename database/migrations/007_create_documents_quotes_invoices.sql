@@ -1,0 +1,68 @@
+CREATE TABLE IF NOT EXISTS client_documents (
+  id UUID PRIMARY KEY,
+  client_id UUID NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+  location_id UUID REFERENCES locations(id) ON DELETE SET NULL,
+  intervention_id UUID REFERENCES interventions(id) ON DELETE SET NULL,
+  survey_id UUID,
+  quote_id UUID,
+  invoice_id UUID,
+  tipo_documento VARCHAR(50) NOT NULL,
+  titolo VARCHAR(255) NOT NULL,
+  file_url VARCHAR(500) NOT NULL,
+  data_documento DATE,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS quotes (
+  id UUID PRIMARY KEY,
+  client_id UUID NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+  location_id UUID REFERENCES locations(id) ON DELETE SET NULL,
+  numero_preventivo VARCHAR(50) NOT NULL,
+  oggetto VARCHAR(255) NOT NULL,
+  descrizione TEXT,
+  imponibile DECIMAL(10,2) NOT NULL DEFAULT 0,
+  iva DECIMAL(10,2) NOT NULL DEFAULT 0,
+  totale DECIMAL(10,2) NOT NULL DEFAULT 0,
+  stato VARCHAR(30) NOT NULL DEFAULT 'bozza',
+  note TEXT,
+  pdf_url VARCHAR(500),
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS quote_items (
+  id UUID PRIMARY KEY,
+  quote_id UUID NOT NULL REFERENCES quotes(id) ON DELETE CASCADE,
+  descrizione TEXT NOT NULL,
+  quantita DECIMAL(10,2) NOT NULL DEFAULT 1,
+  prezzo_unitario DECIMAL(10,2) NOT NULL DEFAULT 0,
+  totale DECIMAL(10,2) NOT NULL DEFAULT 0,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS invoices (
+  id UUID PRIMARY KEY,
+  client_id UUID NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+  location_id UUID REFERENCES locations(id) ON DELETE SET NULL,
+  quote_id UUID REFERENCES quotes(id) ON DELETE SET NULL,
+  numero_fattura VARCHAR(50) NOT NULL,
+  data_fattura DATE,
+  imponibile DECIMAL(10,2) NOT NULL DEFAULT 0,
+  iva DECIMAL(10,2) NOT NULL DEFAULT 0,
+  totale DECIMAL(10,2) NOT NULL DEFAULT 0,
+  stato_pagamento VARCHAR(30) NOT NULL DEFAULT 'da_pagare',
+  note TEXT,
+  pdf_url VARCHAR(500),
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS invoice_items (
+  id UUID PRIMARY KEY,
+  invoice_id UUID NOT NULL REFERENCES invoices(id) ON DELETE CASCADE,
+  descrizione TEXT NOT NULL,
+  quantita DECIMAL(10,2) NOT NULL DEFAULT 1,
+  prezzo_unitario DECIMAL(10,2) NOT NULL DEFAULT 0,
+  totale DECIMAL(10,2) NOT NULL DEFAULT 0,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

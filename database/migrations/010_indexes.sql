@@ -1,0 +1,9 @@
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_locations_client_id ON locations(client_id);
+CREATE INDEX IF NOT EXISTS idx_interventions_client_id ON interventions(client_id);
+CREATE INDEX IF NOT EXISTS idx_interventions_location_id ON interventions(location_id);
+CREATE INDEX IF NOT EXISTS idx_interventions_technician_id ON interventions(technician_id);
+CREATE INDEX IF NOT EXISTS idx_interventions_data_programmata ON interventions(data_programmata);
+CREATE INDEX IF NOT EXISTS idx_site_surveys_client_id ON site_surveys(client_id);
+CREATE INDEX IF NOT EXISTS idx_site_surveys_location_id ON site_surveys(location_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);

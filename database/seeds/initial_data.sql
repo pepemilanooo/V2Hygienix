@@ -1,0 +1,1 @@
+-- Seed gestito via backend/src/scripts/seed.js
