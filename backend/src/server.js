@@ -74,21 +74,21 @@ app.get('/api/seed', async (req, res) => {
 });
 
 // TEMP: Endpoint di migrate
-// TEMP: Endpoint di migrate - crea tutte le tabelle direttamente
 app.get('/api/migrate', async (req, res) => {
   try {
+    const fs = require('fs');
+    const path = require('path');
     const pool = require('./config/database');
     
-    const migrations = [
-      { name: 'extensions', sql: `CREATE EXTENSION IF NOT EXISTS "uuid-ossp";` },
-      
-      { name: 'users', sql: `
-        CREATE TABLE IF NOT EXISTS users (
-          id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-          nome VARCHAR(100) NOT NULL,
-          cognome VARCHAR(100) NOT NULL,
-          email VARCHAR(255) UNIQUE NOT NULL,
-          password_hash VARCHAR(255) NOT NULL,
+    const migrationsDir = path.join(__dirname, '..', '..', 'database', 'migrations');
+    
+    // Verifica se la directory esiste
+    if (!fs.existsSync(migrationsDir)) {
+      return res.status(500).json({
+        status: 'error',
+        message: 'Migrations directory not found: ' + migrationsDir
+      });
+    }
           telefono VARCHAR(50),
           ruolo VARCHAR(20) NOT NULL CHECK (ruolo IN ('admin', 'tecnico')),
           attivo BOOLEAN DEFAULT true,
