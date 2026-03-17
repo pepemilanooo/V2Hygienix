@@ -74,49 +74,221 @@ app.get('/api/seed', async (req, res) => {
 });
 
 // TEMP: Endpoint di migrate
+// TEMP: Endpoint di migrate - crea tutte le tabelle direttamente
 app.get('/api/migrate', async (req, res) => {
   try {
-    const fs = require('fs');
-    const path = require('path');
     const pool = require('./config/database');
     
-    const migrationsDir = path.join(__dirname, '..', '..', 'database', 'migrations');
-    
-    if (!fs.existsSync(migrationsDir)) {
-      return res.status(500).json({
-        status: 'error',
-        message: 'Migrations directory not found: ' + migrationsDir
-      });
-    }
-    
-    const files = fs.readdirSync(migrationsDir).filter((file) => file.endsWith('.sql')).sort();
-
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS schema_migrations (
-        id SERIAL PRIMARY KEY,
-        filename TEXT UNIQUE NOT NULL,
-        executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
+    const migrations = [
+      { name: 'extensions', sql: `CREATE EXTENSION IF NOT EXISTS "uuid-ossp";` },
+      
+      { name: 'users', sql: `
+        CREATE TABLE IF NOT EXISTS users (
+          id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+          nome VARCHAR(100) NOT NULL,
+          cognome VARCHAR(100) NOT NULL,
+          email VARCHAR(255) UNIQUE NOT NULL,
+          password_hash VARCHAR(255) NOT NULL,
+          telefono VARCHAR(50),
+          ruolo VARCHAR(20) NOT NULL CHECK (ruolo IN ('admin', 'tecnico')),
+          attivo BOOLEAN DEFAULT true,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+      `},
+      
+      { name: 'clients', sql: `
+        CREATE TABLE IF NOT EXISTS clients (
+          id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+          ragione_sociale VARCHAR(255) NOT NULL,
+          indirizzo VARCHAR(255),
+          citta VARCHAR(100),
+          cap VARCHAR(20),
+          provincia VARCHAR(10),
+          telefono VARCHAR(50),
+          email VARCHAR(255),
+          piva VARCHAR(50),
+          cf VARCHAR(50),
+          consulente VARCHAR(255),
+          numero_consulente VARCHAR(50),
+          note TEXT,
+          attivo BOOLEAN DEFAULT true,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+      `},
+      
+      { name: 'locations', sql: `
+        CREATE TABLE IF NOT EXISTS locations (
+          id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+          client_id UUID NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+          nome VARCHAR(255) NOT NULL,
+          indirizzo VARCHAR(255),
+          citta VARCHAR(100),
+          cap VARCHAR(20),
+          provincia VARCHAR(10),
+          latitudine DECIMAL(10,8),
+          longitudine DECIMAL(11,8),
+          note TEXT,
+          attivo BOOLEAN DEFAULT true,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+      `},
+      
+      { name: 'pest_types', sql: `
+        CREATE TABLE IF NOT EXISTS pest_types (
+          id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+          nome VARCHAR(100) NOT NULL,
+          descrizione TEXT,
+          categoria VARCHAR(50)
+        );
+      `},
+      
+      { name: 'treatment_methods', sql: `
+        CREATE TABLE IF NOT EXISTS treatment_methods (
+          id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+          nome VARCHAR(100) NOT NULL,
+          descrizione TEXT
+        );
+      `},
+      
+      { name: 'products', sql: `
+        CREATE TABLE IF NOT EXISTS products (
+          id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+          codice VARCHAR(50) UNIQUE NOT NULL,
+          nome VARCHAR(255) NOT NULL,
+          descrizione TEXT,
+          unita_misura VARCHAR(50) DEFAULT 'pz',
+          prezzo_unitario DECIMAL(10,2) DEFAULT 0,
+          attivo BOOLEAN DEFAULT true,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+      `},
+      
+      { name: 'interventions', sql: `
+        CREATE TABLE IF NOT EXISTS interventions (
+          id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+          numero VARCHAR(50) UNIQUE NOT NULL,
+          location_id UUID NOT NULL REFERENCES locations(id) ON DELETE CASCADE,
+          tecnico_id UUID REFERENCES users(id),
+          data_intervento DATE NOT NULL,
+          ora_inizio TIME,
+          ora_fine TIME,
+          tipo_trattamento VARCHAR(50),
+          note TEXT,
+          stato VARCHAR(20) DEFAULT 'pianificato',
+          firma_cliente TEXT,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+      `},
+      
+      { name: 'traps', sql: `
+        CREATE TABLE IF NOT EXISTS traps (
+          id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+          location_id UUID NOT NULL REFERENCES locations(id) ON DELETE CASCADE,
+          codice VARCHAR(50) NOT NULL,
+          tipo VARCHAR(50),
+          posizione_descrizione TEXT,
+          latitudine DECIMAL(10,8),
+          longitudine DECIMAL(11,8),
+          attivo BOOLEAN DEFAULT true,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE(location_id, codice)
+        );
+      `},
+      
+      { name: 'trap_checks', sql: `
+        CREATE TABLE IF NOT EXISTS trap_checks (
+          id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+          trap_id UUID NOT NULL REFERENCES traps(id) ON DELETE CASCADE,
+          data_controllo DATE NOT NULL,
+          stato VARCHAR(50),
+          note TEXT,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+      `},
+      
+      { name: 'quotes', sql: `
+        CREATE TABLE IF NOT EXISTS quotes (
+          id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+          numero VARCHAR(50) UNIQUE NOT NULL,
+          client_id UUID NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+          data_emissione DATE NOT NULL,
+          importo_totale DECIMAL(12,2) DEFAULT 0,
+          note TEXT,
+          stato VARCHAR(20) DEFAULT 'bozza',
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+      `},
+      
+      { name: 'invoices', sql: `
+        CREATE TABLE IF NOT EXISTS invoices (
+          id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+          numero VARCHAR(50) UNIQUE NOT NULL,
+          client_id UUID NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+          data_emissione DATE NOT NULL,
+          importo_totale DECIMAL(12,2) DEFAULT 0,
+          stato VARCHAR(20) DEFAULT 'emessa',
+          note TEXT,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+      `},
+      
+      { name: 'documents', sql: `
+        CREATE TABLE IF NOT EXISTS documents (
+          id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+          client_id UUID NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+          nome_file VARCHAR(255) NOT NULL,
+          url VARCHAR(500) NOT NULL,
+          tipo VARCHAR(100),
+          descrizione TEXT,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+      `},
+      
+      { name: 'surveys', sql: `
+        CREATE TABLE IF NOT EXISTS surveys (
+          id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+          numero VARCHAR(50) UNIQUE NOT NULL,
+          client_id UUID NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+          data_sopralluogo DATE NOT NULL,
+          infestazione_tipo VARCHAR(100),
+          note TEXT,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+      `},
+      
+      { name: 'notifications', sql: `
+        CREATE TABLE IF NOT EXISTS notifications (
+          id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+          user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          tipo VARCHAR(50) NOT NULL,
+          titolo VARCHAR(255) NOT NULL,
+          messaggio TEXT,
+          letta BOOLEAN DEFAULT false,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+      `}
+    ];
 
     const results = [];
-    for (const file of files) {
-      const already = await pool.query('SELECT 1 FROM schema_migrations WHERE filename = $1', [file]);
-      if (already.rows.length > 0) {
-        results.push({ file, status: 'skipped' });
-        continue;
-      }
-
-      const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf8');
-      await pool.query('BEGIN');
+    
+    for (const migration of migrations) {
       try {
-        await pool.query(sql);
-        await pool.query('INSERT INTO schema_migrations (filename) VALUES ($1)', [file]);
-        await pool.query('COMMIT');
-        results.push({ file, status: 'executed' });
+        await pool.query(migration.sql);
+        results.push({ table: migration.name, status: 'created' });
       } catch (error) {
-        await pool.query('ROLLBACK');
-        results.push({ file, status: 'error', error: error.message });
+        if (error.message.includes('already exists')) {
+          results.push({ table: migration.name, status: 'already_exists' });
+        } else {
+          results.push({ table: migration.name, status: 'error', error: error.message });
+        }
       }
     }
 
