@@ -22,8 +22,11 @@ const documentRoutes = require('./routes/documents');
 const app = express();
 
 app.use(helmet());
-app.use(cors({ origin: env.corsOrigin === '*' ? true : env.corsOrigin, credentials: true }));
-app.use(express.json({ limit: '10mb' }));
+app.use(cors({
+  origin: process.env.FRONTEND_URL,
+  credentials: true
+}))
+  app.use(express.json({ limit: '10mb' }));
 
 const mockStorageDir = path.join(__dirname, '..', 'mock-storage');
 if (!fs.existsSync(mockStorageDir)) {
